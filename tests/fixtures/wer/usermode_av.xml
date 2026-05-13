@@ -1,0 +1,7 @@
+<EVENT_DATA>
+  <ProcessName>svchost.exe</ProcessName>
+  <FaultingModuleName>rpcrt4.dll</FaultingModuleName>
+  <FaultingModuleVersion>10.0.26100.4946</FaultingModuleVersion>
+  <ExceptionCode>0xC0000005</ExceptionCode>
+  <FaultingOffset>0x1234</FaultingOffset>
+</EVENT_DATA>

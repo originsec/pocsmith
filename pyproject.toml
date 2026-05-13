@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pocsmith"
+version = "0.0.1"
+description = "Agentic POC development from patchwatch CVE reports"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.6",
+  "pyyaml>=6.0",
+  "typer>=0.12",
+  "python-dotenv>=1.0",
+  "rich>=13.7",
+  "claude-agent-sdk>=0.0.10",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "pytest-mock>=3.12",
+  "ruff>=0.4",
+]
+
+[project.scripts]
+pocsmith = "pocsmith.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pocsmith"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

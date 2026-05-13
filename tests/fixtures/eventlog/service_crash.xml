@@ -1,0 +1,12 @@
+<Events>
+  <Event Source="Service Control Manager">
+    <ServiceName>RpcSs</ServiceName>
+    <ServiceState>Stopped</ServiceState>
+  </Event>
+  <Event Source="Application Error">
+    <FaultingApplication>svchost.exe</FaultingApplication>
+    <FaultingModule>rpcrt4.dll</FaultingModule>
+    <ExceptionCode>0xC0000005</ExceptionCode>
+    <FaultOffset>0x1500</FaultOffset>
+  </Event>
+</Events>

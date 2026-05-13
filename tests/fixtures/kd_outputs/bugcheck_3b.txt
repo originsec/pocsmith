@@ -1,0 +1,4 @@
+*** Fatal System Error: 0x0000003b
+... BugCheck 3B, {c0000005, fffff80012345678, ffff8e0000abcdef, 0}
+... Probably caused by : ntoskrnl.exe ( nt!KiSystemServiceCopyEnd+25 )
+... Followup: MachineOwner
