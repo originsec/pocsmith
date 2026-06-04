@@ -9,7 +9,7 @@ pocsmith wires a handful of MCP servers and an LLM into one workflow:
 - **[kd-mcp](https://github.com/originsec/kd-mcp)** — remote kernel debugger wrapper (breakpoints, register/memory inspection, `!analyze -v`).
 - **[pyghidra-mcp](https://github.com/clearbluejar/pyghidra-mcp)** — Ghidra running over the pre-patch binary with PDB symbols applied.
 - **pocsmith-mcp** — driver tools the agent uses to compile, record attempts, declare success, and end phases. Implemented in this repo.
-- **Anthropic API** — the agent that drives the loop. Configurable model.
+- **Anthropic-compatible LLM provider** — the agent that drives the loop. Anthropic is the default; Abliteration AI is supported via its Anthropic-compatible endpoint.
 
 It is designed to run **locally** against your own infrastructure: your Hyper-V host, your VMs, your ISOs. The only outbound traffic is to the LLM endpoint you configure.
 
@@ -45,6 +45,7 @@ Set these in a `.env` file at the workspace root (copy `.env.example` to start):
 
 ```
 ANTHROPIC_API_KEY               your Anthropic API key
+ABLITERATION_API_KEY            optional: your Abliteration AI key for llm.provider=abliteration-ai
 HYPERV_GUEST_USERNAME           guest VM admin username (e.g. Administrator)
 HYPERV_GUEST_PASSWORD           guest VM admin password
 HYPERV_GUEST_VICTIM_USERNAME    optional: unprivileged account for EoP scenarios
@@ -121,7 +122,7 @@ Optional flags on `run` and `resume`:
 | `--workspace-root` | from config | Override workspace root. |
 | `--vm-name` | from config | Hyper-V VM name. |
 | `--hint TEXT` | _(none)_ | Hints injected into the agent's first kickoff message. |
-| `--model` | `claude-opus-4-7` | Anthropic model id. |
+| `--model` | from config, or `claude-opus-4-7` | Model id. Overrides `llm.model`. |
 | `--skip-build-check` | off | Skip verifying that the VM's build matches `context.json`'s `patched_build`. |
 
 ## Configuration
@@ -159,6 +160,7 @@ attacker_py:
   packages: [impacket]
 
 llm:
+  provider: anthropic
   model: claude-opus-4-7
   api_key_env: ANTHROPIC_API_KEY
   context_threshold_pct: 70
@@ -172,6 +174,20 @@ paths:
   patchwatch_bin: C:\Tools\patchwatch\patchwatch.exe
   workspace_root: C:\Research\pocsmith-workspaces
 ```
+
+### Abliteration AI
+
+To run through Abliteration AI's Anthropic-compatible endpoint, set `ABLITERATION_API_KEY` and use:
+
+```yaml
+llm:
+  provider: abliteration-ai
+  model: abliterated-model
+  api_key_env: ABLITERATION_API_KEY
+  context_threshold_pct: 70
+```
+
+`base_url` is optional and defaults to `https://api.abliteration.ai`.
 
 ### Local Ghidra (no Docker)
 

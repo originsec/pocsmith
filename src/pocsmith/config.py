@@ -72,8 +72,10 @@ class AttackerPyConfig(BaseModel):
 
 
 class LlmConfig(BaseModel):
+    provider: Literal["anthropic", "abliteration-ai"] = "anthropic"
     model: str = "claude-opus-4-7"
     api_key_env: str = "ANTHROPIC_API_KEY"
+    base_url: Optional[str] = None
     context_threshold_pct: int = 70
 
 

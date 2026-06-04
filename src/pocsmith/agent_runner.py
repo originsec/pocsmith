@@ -38,7 +38,8 @@ def _serialize(obj):
 class AgentRunner:
     async def run_phase(self, *, workspace: Path, system_prompt: str,
                         kickoff: str, tools: list, hooks: dict,
-                        model: str, phase_n: int = 0) -> dict:
+                        model: str, phase_n: int = 0,
+                        llm_env: dict[str, str] | None = None) -> dict:
         _start = time.monotonic()
         opts = ClaudeAgentOptions(
             system_prompt=system_prompt,
@@ -47,6 +48,7 @@ class AgentRunner:
             mcp_servers=str(workspace / ".mcp.json"),
             allowed_tools=tools,
             hooks=hooks or None,
+            env=llm_env or {},
             permission_mode="bypassPermissions",
             setting_sources=[],  # no user/project/local settings, CLAUDE.md, or memory
             skills=None,         # no skill auto-config

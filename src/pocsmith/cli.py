@@ -6,7 +6,6 @@ import os
 import typer
 from dotenv import load_dotenv
 
-load_dotenv()
 from pocsmith.workspace import (
     prepare_workspace, release_lock,
     start_ghidra_container, stop_ghidra_container, wait_for_ghidra_container,
@@ -15,8 +14,11 @@ from pocsmith.session import run_session, RunnerProtocol
 from pocsmith.report import write_artifacts
 from pocsmith.context import load_context
 from pocsmith.config import load_config
+from pocsmith.llm import effective_model, effective_sdk_env
 from pocsmith.preflight import check_vm_build
 
+
+load_dotenv()
 
 app = typer.Typer(help="Agentic POC development from patchwatch reports.")
 
@@ -33,7 +35,8 @@ _SUCCESS_STATUSES = {"crash_repro_success", "partial_primitive", "full_exploit"}
 class _FakeRunner(RunnerProtocol):
     """Used by tests; env-gated."""
     async def run_phase(self, *, workspace, system_prompt, kickoff,
-                        tools, hooks, model, phase_n: int = 0):
+                        tools, hooks, model, phase_n: int = 0,
+                        llm_env: dict[str, str] | None = None):
         return {"event": "report_outcome",
                 "outcome": {"action": "terminate", "status": "give_up",
                             "attempt_id": None, "signal": None, "notes": "fake"},
@@ -52,7 +55,7 @@ def run(
     cve: str = typer.Option(..., "--cve"),
     level: str = typer.Option("A", "--level"),
     workspace_root: Path = typer.Option(None, "--workspace-root"),
-    model: str = typer.Option("claude-opus-4-7", "--model"),
+    model: str | None = typer.Option(None, "--model"),
     config_path: Path = typer.Option(None, "--config",
                                      help="Path to pocsmith.yaml"),
     vm_name: str = typer.Option("", "--vm-name",
@@ -68,6 +71,8 @@ def run(
         raise typer.BadParameter(f"level must be one of A, B, C; got {level!r}")
 
     cfg = load_config(config_path) if config_path else None
+    model = effective_model(cfg, model)
+    llm_env = effective_sdk_env(cfg, model=model) or None
     effective_ws = workspace_root or (cfg.paths.workspace_root if cfg else None)
     if not effective_ws:
         raise typer.BadParameter(
@@ -114,6 +119,7 @@ def run(
             workspace=ws.path, level=level, runner=_make_runner(),
             ceilings=_CEILINGS_BY_LEVEL[level], model=model,
             vm_name=effective_vm, user_hint=hint,
+            llm_env=llm_env,
         ))
         outcome = res.terminal or {
             "status": res.exhausted or "error",
@@ -128,7 +134,7 @@ def run(
         )
         if outcome.get("status") in _SUCCESS_STATUSES:
             from pocsmith.report_gen import generate_report
-            generate_report(workspace=ws.path, model=model)
+            generate_report(workspace=ws.path, model=model, llm_env=llm_env)
             if (ws.path / "artifacts" / "report.md").exists():
                 typer.echo("[+] Report written to artifacts/report.md")
             else:
@@ -146,7 +152,7 @@ def resume(
     cve: str = typer.Option(..., "--cve"),
     workspace_root: Path = typer.Option(None, "--workspace-root"),
     level: str = typer.Option("A", "--level"),
-    model: str = typer.Option("claude-opus-4-7", "--model"),
+    model: str | None = typer.Option(None, "--model"),
     force: bool = typer.Option(False, "--force"),
     config_path: Path = typer.Option(None, "--config",
                                      help="Path to pocsmith.yaml"),
@@ -164,6 +170,8 @@ def resume(
         raise typer.BadParameter(f"level must be one of A, B, C; got {level!r}")
 
     cfg = load_config(config_path) if config_path else None
+    model = effective_model(cfg, model)
+    llm_env = effective_sdk_env(cfg, model=model) or None
     effective_ws = workspace_root or (cfg.paths.workspace_root if cfg else None)
     if not effective_ws:
         raise typer.BadParameter(
@@ -212,6 +220,7 @@ def resume(
             workspace=ws.path, level=level, runner=_make_runner(),
             ceilings=_CEILINGS_BY_LEVEL[level], model=model,
             vm_name=effective_vm, user_hint=hint,
+            llm_env=llm_env,
         ))
         outcome = res.terminal or {
             "status": res.exhausted or "error",
@@ -226,7 +235,7 @@ def resume(
         )
         if outcome.get("status") in _SUCCESS_STATUSES:
             from pocsmith.report_gen import generate_report
-            generate_report(workspace=ws.path, model=model)
+            generate_report(workspace=ws.path, model=model, llm_env=llm_env)
             if (ws.path / "artifacts" / "report.md").exists():
                 typer.echo("[+] Report written to artifacts/report.md")
             else:
@@ -303,10 +312,12 @@ def tail(
 def report(
     cve: str = typer.Option(..., "--cve"),
     workspace_root: Path = typer.Option(None, "--workspace-root"),
-    model: str = typer.Option("claude-opus-4-7", "--model"),
+    model: str | None = typer.Option(None, "--model"),
     config_path: Path = typer.Option(None, "--config", help="Path to pocsmith.yaml"),
 ):
     cfg = load_config(config_path) if config_path else None
+    model = effective_model(cfg, model)
+    llm_env = effective_sdk_env(cfg, model=model) or None
     effective_ws = workspace_root or (cfg.paths.workspace_root if cfg else None)
     if not effective_ws:
         raise typer.BadParameter(
@@ -339,5 +350,5 @@ def report(
         raise typer.Exit(code=1)
 
     from pocsmith.report_gen import generate_report
-    generate_report(workspace=cve_dir, model=model)
+    generate_report(workspace=cve_dir, model=model, llm_env=llm_env)
     typer.echo("[+] Report written to artifacts/report.md")

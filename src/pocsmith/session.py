@@ -50,6 +50,7 @@ class RunnerProtocol(Protocol):
     async def run_phase(
         self, *, workspace: Path, system_prompt: str, kickoff: str,
         tools: list, hooks: dict, model: str, phase_n: int = 0,
+        llm_env: dict[str, str] | None = None,
     ) -> dict: ...
 
 
@@ -65,7 +66,8 @@ async def run_session(*, workspace: Path, level: str, runner: RunnerProtocol,
                       vm_name: str = "",
                       user_hint: str = "",
                       tools: list | None = None,
-                      hooks: dict | None = None) -> SessionResult:
+                      hooks: dict | None = None,
+                      llm_env: dict[str, str] | None = None) -> SessionResult:
     if ceilings.get("phases", 1) < 1:
         raise ValueError("ceilings['phases'] must be >= 1")
     _log_mod.init(workspace)
@@ -97,11 +99,18 @@ async def run_session(*, workspace: Path, level: str, runner: RunnerProtocol,
         log.info("Phase %d starting", phase_n)
         log.debug("Phase %d kickoff:\n%s", phase_n, kickoff[:500])
 
-        result = await runner.run_phase(
-            workspace=workspace, system_prompt=system, kickoff=kickoff,
-            tools=tools if tools is not None else ALLOWED_TOOLS,
-            hooks=hooks or {}, model=model, phase_n=phase_n,
-        )
+        run_kwargs = {
+            "workspace": workspace,
+            "system_prompt": system,
+            "kickoff": kickoff,
+            "tools": tools if tools is not None else ALLOWED_TOOLS,
+            "hooks": hooks or {},
+            "model": model,
+            "phase_n": phase_n,
+        }
+        if llm_env is not None:
+            run_kwargs["llm_env"] = llm_env
+        result = await runner.run_phase(**run_kwargs)
         budget.tick(
             seconds=result.get("elapsed_s", 0),
             tokens_input=result.get("tokens_in", 0),

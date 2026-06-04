@@ -215,7 +215,12 @@ def _build_prompt(data: dict) -> tuple[str, str]:
     return _SYSTEM_PROMPT, "\n".join(parts)
 
 
-async def _query_claude(system_prompt: str, user_prompt: str, model: str) -> str:
+async def _query_claude(
+    system_prompt: str,
+    user_prompt: str,
+    model: str,
+    llm_env: dict[str, str] | None = None,
+) -> str:
     """Run a single-turn query via claude_agent_sdk and return the text response."""
     from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, ToolUseBlock, query
 
@@ -224,6 +229,7 @@ async def _query_claude(system_prompt: str, user_prompt: str, model: str) -> str
         model=model,
         allowed_tools=[],
         mcp_servers=None,
+        env=llm_env or {},
         permission_mode="bypassPermissions",
         setting_sources=[],
         skills=None,
@@ -248,11 +254,16 @@ async def _query_claude(system_prompt: str, user_prompt: str, model: str) -> str
     return "".join(text_parts)
 
 
-def call_claude_for_report(data: dict, *, model: str) -> str:
+def call_claude_for_report(
+    data: dict,
+    *,
+    model: str,
+    llm_env: dict[str, str] | None = None,
+) -> str:
     """Call Claude via SDK to generate the findings report. Returns Markdown text."""
     log.info("Querying Claude for report (model=%s)", model)
     system_prompt, user_prompt = _build_prompt(data)
-    result = asyncio.run(_query_claude(system_prompt, user_prompt, model))
+    result = asyncio.run(_query_claude(system_prompt, user_prompt, model, llm_env))
     log.info("Report generated (%d chars)", len(result))
     return result
 
@@ -284,13 +295,21 @@ def write_report_artifacts(workspace: Path, report_md: str, data: dict) -> None:
         log.debug("Copied %d POC file(s) to artifacts/poc/", copied)
 
 
-def generate_report(workspace: Path, *, model: str = "claude-opus-4-7") -> None:
+def generate_report(
+    workspace: Path,
+    *,
+    model: str = "claude-opus-4-7",
+    llm_env: dict[str, str] | None = None,
+) -> None:
     """Collect workspace data, call Claude, and write report artifacts."""
     log.info("Starting report generation for workspace: %s", workspace)
     data = collect_workspace_data(workspace)
 
     try:
-        report_md = call_claude_for_report(data, model=model)
+        report_kwargs = {"model": model}
+        if llm_env is not None:
+            report_kwargs["llm_env"] = llm_env
+        report_md = call_claude_for_report(data, **report_kwargs)
     except RuntimeError as exc:
         log.warning("Report generation skipped: %s", exc)
         return
