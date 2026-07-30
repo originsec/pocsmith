@@ -16,6 +16,14 @@ from claude_agent_sdk import (
 
 log = logging.getLogger("pocsmith.runner")
 
+# The claude_agent_sdk transport caps any single NDJSON line from the CLI
+# subprocess at 1 MiB by default. Tool results from this agent (decompiled
+# functions, guest file reads, crash dumps, large command output) routinely
+# exceed that, which aborts the phase with "JSON message exceeded maximum
+# buffer size". Raise the cap to 16 MiB so legitimate messages are not
+# rejected while still bounding unbounded-line memory growth.
+_MAX_BUFFER_SIZE = 16 * 1024 * 1024
+
 
 def _serialize(obj):
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
@@ -42,6 +50,7 @@ class AgentRunner:
             permission_mode="bypassPermissions",
             setting_sources=[],  # no user/project/local settings, CLAUDE.md, or memory
             skills=None,         # no skill auto-config
+            max_buffer_size=_MAX_BUFFER_SIZE,
         )
         attempts = 0
         tokens_in = 0

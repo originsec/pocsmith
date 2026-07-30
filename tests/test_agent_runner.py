@@ -1,7 +1,7 @@
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from claude_agent_sdk import AssistantMessage, ResultMessage, ToolUseBlock
 
 
@@ -53,3 +53,25 @@ async def test_runner_detects_report_outcome(tmp_path: Path):
     assert out["outcome"]["status"] == "give_up"
     assert out["attempts"] == 1
     assert out["tokens_in"] == 100 and out["tokens_out"] == 50
+
+
+@pytest.mark.asyncio
+async def test_runner_sets_max_buffer_size(tmp_path: Path):
+    from pocsmith.agent_runner import _MAX_BUFFER_SIZE, AgentRunner
+
+    captured: dict = {}
+
+    async def fake_query(prompt, options):
+        captured["options"] = options
+        return
+        yield  # pragma: no cover - generator marker
+
+    with patch("pocsmith.agent_runner.query", fake_query):
+        runner = AgentRunner()
+        await runner.run_phase(
+            workspace=tmp_path, system_prompt="sys", kickoff="kick",
+            tools=[], hooks={}, model="claude-opus-4-7",
+        )
+
+    assert captured["options"].max_buffer_size == _MAX_BUFFER_SIZE
+    assert _MAX_BUFFER_SIZE > 1024 * 1024
