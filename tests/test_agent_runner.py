@@ -75,3 +75,24 @@ async def test_runner_sets_max_buffer_size(tmp_path: Path):
 
     assert captured["options"].max_buffer_size == _MAX_BUFFER_SIZE
     assert _MAX_BUFFER_SIZE > 1024 * 1024
+
+
+@pytest.mark.asyncio
+async def test_runner_passes_llm_env_to_sdk_options(tmp_path: Path):
+    from pocsmith.agent_runner import AgentRunner
+
+    captured = {}
+
+    async def fake_query(prompt, options):
+        captured["env"] = options.env
+        yield _result(input_tokens=1, output_tokens=1)
+
+    llm_env = {"ANTHROPIC_BASE_URL": "https://api.abliteration.ai"}
+    with patch("pocsmith.agent_runner.query", fake_query):
+        runner = AgentRunner()
+        await runner.run_phase(
+            workspace=tmp_path, system_prompt="sys", kickoff="kick",
+            tools=[], hooks={}, model="abliterated-model", llm_env=llm_env,
+        )
+
+    assert captured["env"] == llm_env
